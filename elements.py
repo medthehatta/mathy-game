@@ -12,7 +12,9 @@ from __future__ import (
 
 import octonion
 import json
-from fractions import Fraction
+
+
+from common import flatten, merge
 
 
 #
@@ -28,13 +30,8 @@ from fractions import Fraction
 #
 
 
-def flatten(lst):
-    return sum(lst, [])
-
-
-def merge(dict1, dict2):
-    all_keys = set.union(set(dict1.keys()), set(dict2.keys()))
-    return {k: dict2.get(k, dict1.get(k)) for k in all_keys}
+def coefficient_type(x):
+    return round(float(x), 3)
 
 
 class Opposites(object):
@@ -139,14 +136,14 @@ class ElementalOctonion(octonion.Octonion):
     def __init__(self, R=0, I=0, J=0, K=0, L=0, IL=0, JL=0, KL=0, **kwargs):  # noqa
         input_dict = merge(
             {
-                'SUBSTANCE': Fraction(R),
-                'ARDOR': Fraction(I),
-                'SPEED': Fraction(J),
-                'HEAL': Fraction(K),
-                'QUINTESSENCE': Fraction(L),
-                'AIR': Fraction(IL),
-                'FIRE': Fraction(JL),
-                'LIGHT': Fraction(KL),
+                'SUBSTANCE': coefficient_type(R),
+                'ARDOR': coefficient_type(I),
+                'SPEED': coefficient_type(J),
+                'HEAL': coefficient_type(K),
+                'QUINTESSENCE': coefficient_type(L),
+                'AIR': coefficient_type(IL),
+                'FIRE': coefficient_type(JL),
+                'LIGHT': coefficient_type(KL),
             },
             kwargs,
         )

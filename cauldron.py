@@ -20,7 +20,7 @@ from common import merge, average
 
 
 EXAMPLE_CAULDRON = {
-    'toughness': 5,
+    'toughness': 4,
     'element_mastery': {
         'substance': 10,
         'absence': 5,
@@ -50,7 +50,7 @@ EXAMPLE_BASE = {
 
 
 def additive(x):
-    return {'elements': x, 'quality': 5}
+    return {'elements': x, 'quality': 5, 'type': 'potion'}
 
 
 EXAMPLE_ADDITIVE = additive(elements.FIRE)
@@ -102,7 +102,7 @@ def mastery_exceeded(cauldron, item):
             'value': value,
             'mastery': mastery_of(cauldron, el),
             'deficit': value - mastery_of(cauldron, el),
-            'mastery_fraction': value / max(mastery_of(cauldron, el), 1),
+            'mastery_fraction': mastery_of(cauldron, el) / max(value, 1),
         }
         for (el, value) in item.stat_dict().items()
     ]
@@ -134,16 +134,14 @@ def work(cauldron, base, additive, capture_substance=False):
     exceeded_base_mastery = mastery_exceeded(cauldron, bases)
     if exceeded_base_mastery:
         return {
-            'item': merge(base, {'elements': elements.e(0)}),
-            'quality': 0,
+            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
             'success': False,
             'exceeded_mastery': exceeded_base_mastery,
         }
     base_exceeds_toughness = toughness_exceeded(cauldron, bases)
     if base_exceeds_toughness['toughness_exceeded']:
         return {
-            'item': merge(base, {'elements': elements.e(0)}),
-            'quality': 0,
+            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
             'success': False,
             'exceeded_toughness': base_exceeds_toughness,
         }
@@ -153,16 +151,14 @@ def work(cauldron, base, additive, capture_substance=False):
     exceeded_additive_mastery = mastery_exceeded(cauldron, additives)
     if exceeded_additive_mastery:
         return {
-            'item': merge(base, {'elements': elements.e(0)}),
-            'quality': 0,
+            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
             'success': False,
             'exceeded_mastery': exceeded_additive_mastery,
         }
     additive_exceeds_toughness = toughness_exceeded(cauldron, additives)
     if additive_exceeds_toughness['toughness_exceeded']:
         return {
-            'item': merge(additive, {'elements': elements.e(0)}),
-            'quality': 0,
+            'item': merge(additive, {'elements': elements.e(0), 'quality': 0}),
             'success': False,
             'exceeded_toughness': additive_exceeds_toughness,
         }
@@ -173,16 +169,14 @@ def work(cauldron, base, additive, capture_substance=False):
     exceeded_result_mastery = mastery_exceeded(cauldron, result)
     if exceeded_result_mastery:
         return {
-            'item': merge(base, {'elements': elements.e(0)}),
-            'quality': 0,
+            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
             'success': False,
             'exceeded_mastery': exceeded_result_mastery,
         }
     result_exceeds_toughness = toughness_exceeded(cauldron, result)
     if result_exceeds_toughness['toughness_exceeded']:
         return {
-            'item': merge(result, {'elements': elements.e(0)}),
-            'quality': 0,
+            'item': {'elements': elements.e(0), 'quality': 0},
             'success': False,
             'exceeded_toughness': result_exceeds_toughness,
         }
@@ -191,6 +185,11 @@ def work(cauldron, base, additive, capture_substance=False):
     # actually produce something
     composition = _composition(result)
     mastery_increases = {k: v for (k, v) in composition.items() if v}
+    quality = average(
+        base_quality,
+        additive_quality,
+        _quality(cauldron, composition),
+    )
     if capture_substance:
         substance_produced = result.SUBSTANCE
         result = result - substance_produced*elements.SUBSTANCE
@@ -198,14 +197,9 @@ def work(cauldron, base, additive, capture_substance=False):
         substance_produced = 0
         result = result
     return {
-        'item': merge(base, {'elements': result}),
+        'item': merge(base, {'elements': result, 'quality': quality}),
         'substance_produced': substance_produced,
         'magnitude': result.norm(),
-        'quality': average(
-            base_quality,
-            additive_quality,
-            _quality(cauldron, composition),
-        ),
         'success': True,
         'mastery_increases': mastery_increases,
         'new_cauldron': merge(
