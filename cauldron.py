@@ -10,8 +10,11 @@ from __future__ import (
 )
 
 
+from cytoolz import merge
+
+
 import elements
-from common import merge, average
+from common import average
 
 
 #
@@ -19,41 +22,49 @@ from common import merge, average
 #
 
 
+QUALITY_THRESH = 5
+
+
 EXAMPLE_CAULDRON = {
-    'toughness': 4,
+    'strength': 4,
     'element_mastery': {
         'substance': 10,
         'absence': 5,
         'ardor': 3,
         'aegis': 3,
-        'speed': 3,
-        'stall': 3,
-        'heal': 3,
-        'wither': 3,
-        'quintessence': 3,
-        'void': 3,
-        'fire': 3,
-        'water': 3,
-        'air': 3,
-        'earth': 3,
-        'light': 3,
-        'shadow': 3,
+        'speed': 1,
+        'stall': 1,
+        'heal': 0,
+        'wither': 0,
+        'quintessence': 0,
+        'void': 0,
+        'fire': 0,
+        'water': 0,
+        'air': 0,
+        'earth': 0,
+        'light': 0,
+        'shadow': 0,
     },
 }
 
 
-EXAMPLE_BASE = {
-    'elements': 1 + elements.FIRE,
-    'quality': 5,
-    'type': 'potion',
-}
+def item(x, quality=5, type_='potion'):
+    return {'elements': x, 'quality': quality, 'type': type_}
 
 
-def additive(x):
-    return {'elements': x, 'quality': 5, 'type': 'potion'}
+def ash(x, quality):
+    return item(x, quality, type_='ash')
 
 
-EXAMPLE_ADDITIVE = additive(elements.FIRE)
+EXAMPLE_BASE = item(1 + elements.FIRE)
+
+
+EXAMPLE_ADDITIVE = item(elements.FIRE)
+
+
+NOTHING = item(0, quality=0, type_='nothing')
+BASE_POTION = item(elements.SUBSTANCE)
+BASE_SWORD = item(elements.SUBSTANCE, type_='sword')
 
 
 #
@@ -65,33 +76,26 @@ def mastery_of(cauldron, element):
     return cauldron['element_mastery'][element.lower()]
 
 
-def toughness_exceeded(cauldron, item):
-    toughness = cauldron['toughness']
-    if toughness <= 0:
+def strength_exceeded(cauldron, item):
+    strength = cauldron['strength']
+    if strength <= 0:
         raise ValueError(
-            'Cauldron toughness must be positive, but found: {}'.format(
-                toughness,
+            'Cauldron strength must be positive, but found: {}'.format(
+                strength,
             ),
         )
     norm = item.norm()
-    if norm > toughness:
-        return {
-            'item': item,
-            'toughness_exceeded': True,
-            'magnitude': norm,
-            'toughness': toughness,
-            'deficit': norm - toughness,
-            'toughness_fraction': norm / toughness,
-        }
+    fields = {
+        'item': item,
+        'magnitude': norm,
+        'strength': strength,
+        'deficit': norm - strength,
+        'strength_fraction': strength / norm,
+    }
+    if norm > strength:
+        return merge(fields, {'strength_exceeded': True})
     else:
-        return {
-            'item': item,
-            'toughness_exceeded': False,
-            'magnitude': norm,
-            'toughness': toughness,
-            'deficit': norm - toughness,
-            'toughness_fraction': norm / toughness,
-        }
+        return merge(fields, {'strength_exceeded': False})
 
 
 def mastery_exceeded(cauldron, item):
@@ -109,87 +113,82 @@ def mastery_exceeded(cauldron, item):
     return [x for x in masteries if x['deficit'] > 0]
 
 
-def _quality(cauldron, composition):
+def get_quality(cauldron, composition):
     # The average mastery of the elements in the result, weighted by fraction
-    res = sum(
-        mastery_of(cauldron, el)*composition[el]
-        for el in composition
-    )
-    return res
+    return sum(mastery_of(cauldron, el)*composition[el] for el in composition)
 
 
-def _composition(result):
-    # The "composition" of the mixture
+def get_composition(result):
+    # NOTE: we don't want the "norm" here; we literally want the sum of the
+    # component magnitudes so we can see what "fraction" of the composition is
+    # made of each component.  If we use norm, the sum of components won't be
+    # 1.
     total_output = sum(abs(x) for x in result.components)
-    result_dict = result.stat_dict()
     return {
-        el: abs(result_dict[el])/total_output
-        for el in result_dict
+        element: abs(element_amount)/total_output
+        for (element, element_amount) in result.stat_dict().items()
     }
+
+
+def failure_work_result(**kwargs):
+    return merge({'item': NOTHING, 'success': False}, kwargs)
+
+
+def ash_result(result, quality, **kwargs):
+    return merge({'item': ash(result, quality), 'success': False}, kwargs)
+
+
+def detect_failure(cauldron, elements):
+    exceeded_mastery = mastery_exceeded(cauldron, elements)
+    if exceeded_mastery:
+        return failure_work_result(exceeded_mastery=exceeded_mastery)
+    exceeds_strength = strength_exceeded(cauldron, elements)
+    if exceeds_strength['strength_exceeded']:
+        return failure_work_result(exceeded_strength=exceeds_strength)
+    # Otherwise
+    return None
 
 
 def work(cauldron, base, additive, capture_substance=False):
     bases = base.get('elements')
     base_quality = base.get('quality')
-    exceeded_base_mastery = mastery_exceeded(cauldron, bases)
-    if exceeded_base_mastery:
-        return {
-            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
-            'success': False,
-            'exceeded_mastery': exceeded_base_mastery,
-        }
-    base_exceeds_toughness = toughness_exceeded(cauldron, bases)
-    if base_exceeds_toughness['toughness_exceeded']:
-        return {
-            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
-            'success': False,
-            'exceeded_toughness': base_exceeds_toughness,
-        }
+
+    failed_base = detect_failure(cauldron, bases)
+    if failed_base:
+        return failed_base
 
     additives = additive.get('elements')
     additive_quality = additive.get('quality')
-    exceeded_additive_mastery = mastery_exceeded(cauldron, additives)
-    if exceeded_additive_mastery:
-        return {
-            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
-            'success': False,
-            'exceeded_mastery': exceeded_additive_mastery,
-        }
-    additive_exceeds_toughness = toughness_exceeded(cauldron, additives)
-    if additive_exceeds_toughness['toughness_exceeded']:
-        return {
-            'item': merge(additive, {'elements': elements.e(0), 'quality': 0}),
-            'success': False,
-            'exceeded_toughness': additive_exceeds_toughness,
-        }
+
+    failed_additives = detect_failure(cauldron, additives)
+    if failed_additives:
+        return failed_additives
 
     # Calculate the resulting stats
     result = bases*additives
 
-    exceeded_result_mastery = mastery_exceeded(cauldron, result)
-    if exceeded_result_mastery:
-        return {
-            'item': merge(base, {'elements': elements.e(0), 'quality': 0}),
-            'success': False,
-            'exceeded_mastery': exceeded_result_mastery,
-        }
-    result_exceeds_toughness = toughness_exceeded(cauldron, result)
-    if result_exceeds_toughness['toughness_exceeded']:
-        return {
-            'item': {'elements': elements.e(0), 'quality': 0},
-            'success': False,
-            'exceeded_toughness': result_exceeds_toughness,
-        }
+    failed_result = detect_failure(cauldron, result)
+    if failed_result:
+        return failed_result
 
-    # If we made it here, we had mastery over the ingredients and result, so we
-    # actually produce something
-    composition = _composition(result)
-    mastery_increases = {k: v for (k, v) in composition.items() if v}
+    composition = get_composition(result)
     quality = average(
         base_quality,
         additive_quality,
-        _quality(cauldron, composition),
+        get_quality(cauldron, composition),
     )
+
+    # If the thing we made has trash quality, it turns to ash
+    if quality < QUALITY_THRESH:
+        return ash_result(result, quality)
+
+    # If we made it here, we had mastery over the ingredients and result, so we
+    # actually produce something
+    mastery_increases = {k: v for (k, v) in composition.items() if v}
+    new_element_masteries = {
+        k: v + mastery_increases.get(k.upper(), 0)
+        for (k, v) in cauldron['element_mastery'].items()
+    }
     if capture_substance:
         substance_produced = result.SUBSTANCE
         result = result - substance_produced*elements.SUBSTANCE
@@ -204,30 +203,6 @@ def work(cauldron, base, additive, capture_substance=False):
         'mastery_increases': mastery_increases,
         'new_cauldron': merge(
             cauldron,
-            {
-                'element_mastery': {
-                    k: v + mastery_increases.get(k.upper(), 0)
-                    for (k, v) in cauldron['element_mastery'].items()
-                },
-            },
+            {'element_mastery': new_element_masteries},
         ),
     }
-
-
-def work_multiple(cauldron, base, additives, **kwargs):
-    results = {
-        'initial_cauldron': cauldron,
-        'base': base,
-        'additives': additives,
-        'outcomes': [],
-    }
-    for additive in additives:
-        found = work(cauldron, base, additive, **kwargs)
-        results['outcomes'].append(found)
-        if found['success'] is False:
-            return results
-        base = found['item']
-        cauldron = found['new_cauldron']
-
-    # When done with the additives, return results
-    return results

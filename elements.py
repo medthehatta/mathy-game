@@ -12,9 +12,10 @@ from __future__ import (
 
 import octonion
 import json
+from cytoolz import merge
 
 
-from common import flatten, merge
+from common import flatten
 
 
 #
