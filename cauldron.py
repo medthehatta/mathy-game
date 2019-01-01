@@ -46,7 +46,7 @@ EXAMPLE_CAULDRON = {
         'shadow': 0,
     },
     # No status effect (meaning this cauldron works!)
-    'status_effect': 0*elements.SUBSTANCE,
+    'status_effect': elements.e(0),
 }
 
 
