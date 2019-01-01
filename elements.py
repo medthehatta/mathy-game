@@ -142,8 +142,8 @@ class ElementalOctonion(octonion.Octonion):
                 'SPEED': coefficient_type(J),
                 'HEAL': coefficient_type(K),
                 'QUINTESSENCE': coefficient_type(L),
-                'AIR': coefficient_type(IL),
-                'FIRE': coefficient_type(JL),
+                'FIRE': coefficient_type(IL),
+                'AIR': coefficient_type(JL),
                 'LIGHT': coefficient_type(KL),
             },
             kwargs,
@@ -153,8 +153,8 @@ class ElementalOctonion(octonion.Octonion):
         self.speed_stall = SPEED_DUO.from_labeled(input_dict)
         self.heal_wither = HEAL_DUO.from_labeled(input_dict)
         self.quintessence = QUINTESSENCE_DUO.from_labeled(input_dict)
-        self.air_earth = AIR_DUO.from_labeled(input_dict)
         self.fire_water = FIRE_DUO.from_labeled(input_dict)
+        self.air_earth = AIR_DUO.from_labeled(input_dict)
         self.light_shadow = LIGHT_DUO.from_labeled(input_dict)
         self.stats = flatten(
             [[duo.positive, duo.negative] for duo in DUOS]
@@ -165,8 +165,8 @@ class ElementalOctonion(octonion.Octonion):
             J=self.speed_stall,
             K=self.heal_wither,
             L=self.quintessence,
-            IL=self.air_earth,
-            JL=self.fire_water,
+            IL=self.fire_water,
+            JL=self.air_earth,
             KL=self.light_shadow,
         )
 
@@ -211,20 +211,20 @@ class ElementalOctonion(octonion.Octonion):
         return QUINTESSENCE_DUO.negative_only(self.quintessence)
 
     @property
-    def FIRE(self):
-        return FIRE_DUO.positive_only(self.fire_water)
-
-    @property
-    def WATER(self):
-        return FIRE_DUO.negative_only(self.fire_water)
-
-    @property
     def AIR(self):
         return AIR_DUO.positive_only(self.air_earth)
 
     @property
     def EARTH(self):
         return AIR_DUO.negative_only(self.air_earth)
+
+    @property
+    def FIRE(self):
+        return FIRE_DUO.positive_only(self.fire_water)
+
+    @property
+    def WATER(self):
+        return FIRE_DUO.negative_only(self.fire_water)
 
     @property
     def LIGHT(self):

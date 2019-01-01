@@ -45,11 +45,13 @@ EXAMPLE_CAULDRON = {
         'light': 0,
         'shadow': 0,
     },
+    # No status effect (meaning this cauldron works!)
+    'status_effect': 0*elements.SUBSTANCE,
 }
 
 
 def item(x, quality=5, type_='potion'):
-    return {'elements': x, 'quality': quality, 'type': type_}
+    return {'composition': x, 'quality': quality, 'type': type_}
 
 
 def ash(x, quality):
@@ -87,8 +89,8 @@ def strength_exceeded(cauldron, item):
     norm = item.norm()
     fields = {
         'item': item,
-        'magnitude': norm,
-        'strength': strength,
+        'item_strength': norm,
+        'cauldron_strength': strength,
         'deficit': norm - strength,
         'strength_fraction': strength / norm,
     }
@@ -107,6 +109,7 @@ def mastery_exceeded(cauldron, item):
             'mastery': mastery_of(cauldron, el),
             'deficit': value - mastery_of(cauldron, el),
             'mastery_fraction': mastery_of(cauldron, el) / max(value, 1),
+            'status_effect': elements.e(**{el: value}),
         }
         for (el, value) in item.stat_dict().items()
     ]
@@ -141,7 +144,17 @@ def ash_result(result, quality, **kwargs):
 def detect_failure(cauldron, elements):
     exceeded_mastery = mastery_exceeded(cauldron, elements)
     if exceeded_mastery:
-        return failure_work_result(exceeded_mastery=exceeded_mastery)
+        return failure_work_result(
+            exceeded_mastery=exceeded_mastery,
+            new_cauldron=merge(
+                cauldron,
+                {
+                    'status_effect': sum(
+                        m['status_effect'] for m in exceeded_mastery
+                    ),
+                }
+            ),
+        )
     exceeds_strength = strength_exceeded(cauldron, elements)
     if exceeds_strength['strength_exceeded']:
         return failure_work_result(exceeded_strength=exceeds_strength)
@@ -150,14 +163,16 @@ def detect_failure(cauldron, elements):
 
 
 def work(cauldron, base, additive, capture_substance=False):
-    bases = base.get('elements')
+    # TODO: We should check for failure from base and additives as soon as
+    # they're added, not once they're "cooked"
+    bases = base.get('composition')
     base_quality = base.get('quality')
 
     failed_base = detect_failure(cauldron, bases)
     if failed_base:
         return failed_base
 
-    additives = additive.get('elements')
+    additives = additive.get('composition')
     additive_quality = additive.get('quality')
 
     failed_additives = detect_failure(cauldron, additives)
@@ -184,9 +199,8 @@ def work(cauldron, base, additive, capture_substance=False):
 
     # If we made it here, we had mastery over the ingredients and result, so we
     # actually produce something
-    mastery_increases = {k: v for (k, v) in composition.items() if v}
     new_element_masteries = {
-        k: v + mastery_increases.get(k.upper(), 0)
+        k: v + composition.get(k.upper(), 0)
         for (k, v) in cauldron['element_mastery'].items()
     }
     if capture_substance:
@@ -196,13 +210,25 @@ def work(cauldron, base, additive, capture_substance=False):
         substance_produced = 0
         result = result
     return {
-        'item': merge(base, {'elements': result, 'quality': quality}),
-        'substance_produced': substance_produced,
-        'magnitude': result.norm(),
+        'item': merge(base, {'composition': result, 'quality': quality}),
+        'substance_produced': substance_produced*elements.SUBSTANCE,
+        'strength': result.norm(),
         'success': True,
-        'mastery_increases': mastery_increases,
         'new_cauldron': merge(
             cauldron,
             {'element_mastery': new_element_masteries},
         ),
     }
+
+
+def affect_cauldron(cauldron, additive):
+    status_effect = cauldron['status_effect']
+    additive_composition = additive['composition']
+
+    result = status_effect*additive_composition
+
+    # If we got "close enough", remove the effect
+    if result.SUBSTANCE / sum(result.components) > 0.9:
+        result = elements.e(0)
+
+    return merge(cauldron, {'status_effect': result})
