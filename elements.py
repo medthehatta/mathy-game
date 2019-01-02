@@ -21,10 +21,12 @@ from cytoolz import merge, keymap, valmap
 
 
 OPPOSING_ELEMENTS = [
+    # positive, negative,      # octonion component
+    # --------- -------------- # ------------------
     ('substance', 'absence'),  # 1
     ('ardor', 'aegis'),        # i
     ('speed', 'stall'),        # j
-    ('heal', 'wither'),        # k
+    ('flourish', 'wither'),    # k
     ('quintessence', 'void'),  # l
     ('fire', 'water'),         # il
     ('air', 'earth'),          # ij
@@ -73,79 +75,31 @@ class ElementalOctonion(octonion.Octonion):
         input_octonion = octonion_to_elemental_dict(
             octonion.Octonion(R, I, J, K, L, IL, JL, KL),
         )
-        self.elemental_dict = merge(
+        # The elemental dict with all kwargs, including nonsensical crap
+        raw_elemental_dict = merge(
             input_octonion,
             keymap(lambda x: x.upper(), kwargs),
         )
-        octo = elemental_dict_to_octonion(self.elemental_dict)
+        # Instantiate this as an octonion with the appropriate components
+        octo = elemental_dict_to_octonion(raw_elemental_dict)
         super().__init__(*octo.components)
+        # Recreate the elemental dict, respecting only legit elements (throwing
+        # out the nonsensical crap from kwargs)
+        self.elemental_dict = octonion_to_elemental_dict(octo)
 
     def project(self, element):
         return self.elemental_dict.get(element.upper(), 0)
 
-    @property
-    def SUBSTANCE(self):
-        return self.project('SUBSTANCE')
-
-    @property
-    def ABSENCE(self):
-        return self.project('ABSENCE')
-
-    @property
-    def ARDOR(self):
-        return self.project('ARDOR')
-
-    @property
-    def AEGIS(self):
-        return self.project('AEGIS')
-
-    @property
-    def SPEED(self):
-        return self.project('SPEED')
-
-    @property
-    def STALL(self):
-        return self.project('STALL')
-
-    @property
-    def HEAL(self):
-        return self.project('HEAL')
-
-    @property
-    def WITHER(self):
-        return self.project('WITHER')
-
-    @property
-    def QUINTESSENCE(self):
-        return self.project('QUINTESSENCE')
-
-    @property
-    def VOID(self):
-        return self.project('VOID')
-
-    @property
-    def AIR(self):
-        return self.project('AIR')
-
-    @property
-    def EARTH(self):
-        return self.project('EARTH')
-
-    @property
-    def FIRE(self):
-        return self.project('FIRE')
-
-    @property
-    def WATER(self):
-        return self.project('WATER')
-
-    @property
-    def LIGHT(self):
-        return self.project('LIGHT')
-
-    @property
-    def SHADOW(self):
-        return self.project('SHADOW')
+    def __getattr__(self, attr):
+        if attr.upper() in self.elemental_dict:
+            return self.project(attr.upper())
+        else:
+            raise AttributeError(
+                "'{}' object has no attribute '{}'".format(
+                    type(self).__name__,
+                    attr,
+                ),
+            )
 
     def __repr__(self):
         component_strings = [
