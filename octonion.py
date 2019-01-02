@@ -221,6 +221,9 @@ class Octonion(object):
     def norm(self):
         return math.sqrt(self.norm_squared())
 
+    def inverse(self):
+        return self.conj()/self.norm()
+
     def __add__(self, other):
         if isinstance(other, Octonion):
             components = componentwise(

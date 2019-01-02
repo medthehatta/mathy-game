@@ -11,7 +11,6 @@ from __future__ import (
 
 
 import octonion
-import json
 from cytoolz import merge, keymap, valmap
 
 
@@ -102,6 +101,9 @@ class ElementalOctonion(octonion.Octonion):
             )
 
     def __repr__(self):
+        if all(component == 0 for component in self.elemental_dict.values()):
+            return '0'
+
         component_strings = [
             (
                 '{}'.format(element) if component == 1 else
@@ -113,10 +115,6 @@ class ElementalOctonion(octonion.Octonion):
         ]
         return ' + '.join(component_strings)
 
-    def __str__(self):
-        stats = self.elemental_dict()
-        return json.dumps({k: str(v) for (k, v) in stats.items() if v})
-
 
 def e(*args, **kwargs):
     return ElementalOctonion(*args, **kwargs)
@@ -126,6 +124,9 @@ def e(*args, **kwargs):
 # Constants (2)
 #
 
+
+# (Nothing)
+NOTHING = e(SUBSTANCE=0)
 
 # Reals...
 SUBSTANCE = e(SUBSTANCE=1)
@@ -139,7 +140,7 @@ AEGIS = e(AEGIS=1)
 SPEED = e(SPEED=1)
 STALL = e(STALL=1)
 
-HEAL = e(HEAL=1)
+FLOURISH = e(FLOURISH=1)
 WITHER = e(WITHER=1)
 
 # ... extend to octonions...
