@@ -248,6 +248,15 @@ class Octonion(object):
             components = [other*component for component in self.components]
         return type(self)(*components)
 
+    def __truediv__(self, other):
+        if isinstance(other, Octonion):
+            return self*other.inverse()
+        else:
+            return self*(1/other)
+
+    def __rtruediv__(self, other):
+        return type(self)(R=other)/self
+
     def __rmul__(self, scalar):
         return self*scalar
 
@@ -262,6 +271,9 @@ class Octonion(object):
 
     def __neg__(self):
         return -1*self
+
+    def __eq__(self, other):
+        return self.components == other.components
 
 
 #

@@ -23,27 +23,51 @@ from common import average
 #
 
 
+# If your cauldron has mastery of an element at the MASTERY_COMPETENCE level,
+# concoctions containing only that element will have a base quality of 50%.
+MASTERY_COMPETENCE = 10
+
+
+# If the concoction quality is below MAX_ASH_QUALITY, it will yield Ash instead
+# of a usable item.
+MAX_ASH_QUALITY = 30
+
+
+# Cauldrons are not directly vulnerable to SUBSTANCE.  Instead, they get a
+# negative SUBSTANCE effect (rendering the cauldron unusable until fixed) if
+# the total STRENGTH of the concoction exceeds the cauldron strength.
 DEFAULT_CAULDRON_STRENGTH = 10
 
 
-DEFAULT_MASTERIES = elements.e(
-    SUBSTANCE=10,
-    ABSENCE=1,
-    ARDOR=3,
-    AEGIS=3,
-    SPEED=2,
-    STALL=2,
-    FLOURISH=0,
-    WITHER=0,
-    QUINTESSENCE=0,
-    VOID=0,
-    FIRE=0,
-    WATER=0,
-    AIR=0,
-    EARTH=0,
-    LIGHT=0,
-    SHADOW=0,
-)
+DEFAULT_MASTERIES = {
+    elements.SUBSTANCE: 10,
+    elements.ABSENCE: 1,
+    elements.ARDOR: 5,
+    elements.AEGIS: 5,
+    elements.SPEED: 2,
+    elements.STALL: 2,
+    elements.FLOURISH: 0,
+    elements.WITHER: 0,
+    elements.QUINTESSENCE: 0,
+    elements.VOID: 0,
+    elements.FIRE: 0,
+    elements.WATER: 0,
+    elements.AIR: 0,
+    elements.EARTH: 0,
+    elements.LIGHT: 0,
+    elements.SHADOW: 0,
+}
+
+
+#
+# Helpers
+#
+
+
+def sigmoid_percent(x, fifty_pct=1):
+    x_norm = x/fifty_pct
+    fraction = x_norm / (1 + abs(x_norm))
+    return 100*fraction
 
 
 #
@@ -64,29 +88,67 @@ class Cauldron(object):
         self.effect = effect
 
     def _insufficient_strength_for(self, concoction):
-        if concoction.strength > self.strength:
+        if concoction.norm() > self.strength:
             self.effect = concoction.strength*elements.SUBSTANCE
             return True
         else:
             return False
 
     def _insufficient_mastery_for(self, concoction):
-        concoction_mastery = self.masteries - concoction
-        if any(component < 0 for component in concoction_mastery.components):
-            # The effect is gonna come from all the non-substance components
-            self.effect = concoction - concoction.R
+        concoction_mastery = {
+            element: (
+                self.masteries[element] - concoction.get_component(element)
+            )
+            for element in self.masteries
+            # Cauldrons are not vulnerable to SUBSTANCE by itself, but rather
+            # to the total strength of the concoction.  So we skip
+            # SUBSTANCE-specific vulnerability.
+            if element is not elements.SUBSTANCE
+        }
+        if any(component < 0 for component in concoction_mastery.values()):
+            mastery_deficit = sum(
+                (-deficit)*element
+                for (element, deficit) in concoction_mastery.items()
+                if deficit < 0
+            )
+            self.effect = mastery_deficit
             return True
         else:
             return False
 
     def _mastery_against(self, concoction):
-        return (self.mastery*concoction.inverse()).norm()
+        # want the "magnitude" of our masteries parallel to the concoction
+        # (weighted by the relative magnitudes of the concoction's components)
+        #
+        # I.E., want:
+        #
+        #    (masteries) . (unit vector parallel to concoction)
+        #    (masteries) . (concoction / concoction.norm())
+        #
+        normalized_concoction = concoction / concoction.norm()
+        return sum(
+            self.masteries[k]*normalized_concoction.get_component(k)
+            for k in self.masteries
+        )
 
-    def craft(self, base, additive):
-        if self._insufficient_strength_for(additive):
+    def _update_masteries(self, concoction):
+        total_concoction = sum(abs(x) for x in concoction.components)
+        normalized = concoction / total_concoction
+        self.masteries = {
+            k: self.masteries[k] + normalized.get_component(k)
+            for k in self.masteries
+        }
+
+    def concoct(self, base, additive):
+        if isinstance(base, (item.Nothing, item.Ash)):
+            raise TypeError('Cannot concoct with Nothing or Ash')
+        if isinstance(additive, (item.Nothing, item.Ash)):
+            raise TypeError('Cannot concoct with Nothing or Ash')
+
+        if self._insufficient_strength_for(additive.composition):
             return item.Nothing()
 
-        if self._insufficient_mastery_for(additive):
+        if self._insufficient_mastery_for(additive.composition):
             return item.Nothing()
 
         result_composition = base.composition*additive.composition
@@ -97,7 +159,10 @@ class Cauldron(object):
         if self._insufficient_mastery_for(result_composition):
             return item.Nothing()
 
-        result_mastery = self._mastery_against(result_composition)
+        result_mastery = sigmoid_percent(
+            self._mastery_against(result_composition),
+            fifty_pct=MASTERY_COMPETENCE,
+        )
         quality = average(
             base.quality,
             additive.quality,
@@ -108,14 +173,14 @@ class Cauldron(object):
 
         # If the thing we made has trash quality, it turns to ash and does not
         # contribute to our masteries.
-        if quality < 40:
+        if quality < MAX_ASH_QUALITY:
             return item.Ash(result_composition, quality)
 
         # If we made it here, we had mastery over the ingredients and result,
         # so we actually (1) produce something of value, and (2) improve our
         # masteries of the elements in the result
         result = base.__class__(result_composition, quality)
-        self.masteries += result_composition/result_composition.norm()
+        self._update_masteries(result_composition)
 
         return result
 

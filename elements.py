@@ -86,8 +86,21 @@ class ElementalOctonion(octonion.Octonion):
         # out the nonsensical crap from kwargs)
         self.elemental_dict = octonion_to_elemental_dict(octo)
 
-    def project(self, element):
-        return self.elemental_dict.get(element.upper(), 0)
+    def get_component(self, element):
+        # If we passed in an EO, we're trying to project out the component
+        # along one of the basis vectors.
+        if isinstance(element, ElementalOctonion):
+            if str(element) in self.elemental_dict:
+                return self.elemental_dict.get(str(element), 0)
+            else:
+                raise ValueError(
+                    'Cannot get component with an ElementalOctonion that is '
+                    'not a basis vector!'
+                )
+
+        # Otherwise we've got a string to look up
+        else:
+            return self.elemental_dict.get(element.upper(), 0)
 
     def __getattr__(self, attr):
         if attr.upper() in self.elemental_dict:
@@ -114,6 +127,9 @@ class ElementalOctonion(octonion.Octonion):
             if component != 0
         ]
         return ' + '.join(component_strings)
+
+    def __hash__(self):
+        return hash(tuple(self.components))
 
 
 def e(*args, **kwargs):
