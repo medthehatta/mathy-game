@@ -139,7 +139,7 @@ class Cauldron(object):
             for k in self.masteries
         }
 
-    def concoct(self, base, additive):
+    def concoct(self, base, additive, name=None):
         if isinstance(base, (item.Nothing, item.Ash)):
             raise TypeError('Cannot concoct with Nothing or Ash')
         if isinstance(additive, (item.Nothing, item.Ash)):
@@ -179,7 +179,12 @@ class Cauldron(object):
         # If we made it here, we had mastery over the ingredients and result,
         # so we actually (1) produce something of value, and (2) improve our
         # masteries of the elements in the result
-        result = base.__class__(result_composition, quality)
+        result = base.__class__(
+            result_composition,
+            quality,
+            recipe=[base, additive],
+            name=name,
+        )
         self._update_masteries(result_composition)
 
         return result

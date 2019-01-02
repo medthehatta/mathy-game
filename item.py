@@ -87,17 +87,26 @@ def random_items(n=20):
 class Item(object):
     """An item to be worked upon."""
 
-    def __init__(self, composition=elements.SUBSTANCE, quality=50):
+    def __init__(
+        self,
+        composition=elements.SUBSTANCE,
+        quality=50,
+        recipe=None,
+        name=None,
+    ):
         self.composition = composition
         self.quality = quality
+        self.recipe = recipe
+        self.name = name or 'unnamed'
 
     @property
     def strength(self):
         return self.composition.norm()
 
     def __repr__(self):
-        return '<{} | {} | q={}>'.format(
+        return '<{} ({}) | {} | q={}>'.format(
             type(self).__name__,
+            self.name,
             self.composition,
             self.quality,
         )
