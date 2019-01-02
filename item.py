@@ -84,8 +84,8 @@ def random_items(n=20):
 #
 
 
-class Item(object):
-    """An item to be worked upon."""
+class Material(object):
+    """A material that can be manipulated."""
 
     def __init__(
         self,
@@ -112,8 +112,8 @@ class Item(object):
         )
 
 
-class Nothing(Item):
-    """The null item."""
+class Nothing(Material):
+    """The null material."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -121,8 +121,12 @@ class Nothing(Item):
         self.quality = 0
 
 
-class Ash(Item):
-    """An item with such outrageously low quality it no longer functions."""
+class Ash(Material):
+    """A material with such outrageously low quality it no longer functions."""
+
+
+class Item(Material):
+    """A material that can be used in some way (other than crafting)."""
 
 
 class Sword(Item):
