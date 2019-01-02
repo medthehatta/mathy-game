@@ -184,20 +184,12 @@ class Cauldron(object):
 
         return result
 
+    def fix(self, agent):
+        result = self.composition*agent.composition
 
-#
-# Business
-#
-
-
-def affect_cauldron(cauldron, additive):
-    status_effect = cauldron['status_effect']
-    additive_composition = additive['composition']
-
-    result = status_effect*additive_composition
-
-    # If we got "close enough", remove the effect
-    if result.SUBSTANCE / sum(result.components) > 0.9:
-        result = elements.e(0)
-
-    return merge(cauldron, {'status_effect': result})
+        # If we got "close enough", remove the effect
+        if result.SUBSTANCE / sum(abs(x) for x in result.components) > 0.9:
+            self.effect = elements.NOTHING
+            return True
+        else:
+            return False
