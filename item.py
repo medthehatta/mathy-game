@@ -111,6 +111,16 @@ class Material(object):
             self.quality,
         )
 
+    def __hash__(self):
+        return hash(
+            (
+                self.__class__,
+                self.name,
+                tuple(self.composition.components),
+                self.quality,
+            )
+        )
+
 
 class Nothing(Material):
     """The null material."""
