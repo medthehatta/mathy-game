@@ -68,7 +68,7 @@ def random_item():
     while composition == elements.NOTHING:
         composition = random_concoction()
 
-    quality = random.randint(50, 100)
+    quality = random.randint(50, 99)
     return klass(composition, quality)
 
 
