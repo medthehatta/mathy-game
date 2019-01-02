@@ -79,6 +79,14 @@ def random_items(n=20):
     return result
 
 
+def walk_recipe(substance):
+    if substance.recipe is None:
+        return [substance]
+    else:
+        (base, additive) = substance.recipe
+        return [base] + walk_recipe(base) + [additive] + walk_recipe(additive)
+
+
 #
 # Classes
 #
@@ -97,16 +105,19 @@ class Material(object):
         self.composition = composition
         self.quality = quality
         self.recipe = recipe
-        self.name = name or 'unnamed'
+        self.name = name
 
     @property
     def strength(self):
         return self.composition.norm()
 
+    def walk_recipe(self):
+        return walk_recipe(self)
+
     def __repr__(self):
         return '<{} ({}) | {} | q={}>'.format(
             type(self).__name__,
-            self.name,
+            self.name or 'unnamed',
             self.composition,
             self.quality,
         )

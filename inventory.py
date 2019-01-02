@@ -161,6 +161,9 @@ class Inventory(object):
             'type': CategoricalIndex(lambda it: it.__class__),
             'item': CategoricalIndex(lambda it: isinstance(it, item.Item)),
             'quality': QuantitativeIndex(lambda it: it.quality),
+            'ingredient': CategoricalIndex(
+                lambda it: [x.name for x in it.walk_recipe() if x.name],
+            ),
         }
         if items is not None:
             self.populate(items)
