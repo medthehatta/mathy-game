@@ -10,9 +10,6 @@ from __future__ import (
 )
 
 
-from cytoolz import merge
-
-
 import elements
 import item
 from common import average
