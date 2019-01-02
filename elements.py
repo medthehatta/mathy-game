@@ -12,10 +12,7 @@ from __future__ import (
 
 import octonion
 import json
-from cytoolz import merge
-
-
-from common import flatten
+from cytoolz import merge, keymap, valmap
 
 
 #
@@ -23,7 +20,16 @@ from common import flatten
 #
 
 
-# (see "Constants (1)" and "Constants (2)" near bottom)
+OPPOSING_ELEMENTS = [
+    ('substance', 'absence'),  # 1
+    ('ardor', 'aegis'),        # i
+    ('speed', 'stall'),        # j
+    ('heal', 'wither'),        # k
+    ('quintessence', 'void'),  # l
+    ('fire', 'water'),         # il
+    ('air', 'earth'),          # ij
+    ('light', 'shadow'),       # ik
+]
 
 
 #
@@ -35,96 +41,25 @@ def coefficient_type(x):
     return round(float(x), 3)
 
 
-class Opposites(object):
+def octonion_to_elemental_dict(octo):
+    octonion_component_relations = zip(octo.components, OPPOSING_ELEMENTS)
+    mappings = [
+        {positive: x if x >= 0 else 0, negative: -x if x < 0 else 0}
+        for (x, (positive, negative)) in octonion_component_relations
+    ]
+    mapping = merge(*mappings)
+    return valmap(coefficient_type, keymap(lambda x: x.upper(), mapping))
 
-    def __init__(self, positive_name, negative_name):
-        self.positive = positive_name.upper()
-        self.negative = negative_name.upper()
-        self.allowed_keys = {self.positive, self.negative}
 
-    def value_to_tuple(self, x):
-        return (
-            (x, 0) if x > 0 else
-            (0, -x) if x < 0 else
-            (0, 0)
+def elemental_dict_to_octonion(elemental_dict):
+    components = [
+        (
+            elemental_dict.get(positive.upper(), 0) -
+            elemental_dict.get(negative.upper(), 0)
         )
-
-    def value_to_labeled(self, x):
-        (positive, negative) = self.value_to_tuple(x)
-        return {self.positive: positive, self.negative: negative}
-
-    def from_positive_negative(self, positive=0, negative=0):
-        # We can't tolerate accepting a negative "negative" value.
-        # Double-negative?  Gimme a break, man.
-        if negative < 0:
-            raise ValueError('Negative value is itself negative!')
-
-        # Handle the weird "convenience" case next: they passed both positive
-        # AND negative.  Perform the subtraction and come to a total.
-        elif positive and negative:
-            return positive - negative
-
-        # Only positive (or they're both zero)
-        elif not negative:
-            return positive
-
-        # The only other possibility is we're given a (strictly positive) value
-        # for the "negative" field.
-        else:
-            return -negative
-
-    def from_tuple(self, tup):
-        (positive, negative) = tup
-        return self.from_positive_negative(positive, negative)
-
-    def from_labeled(self, dic):
-        fixed_dict = {k.upper(): v for (k, v) in dic.items()}
-        positive = fixed_dict.get(self.positive, 0)
-        negative = fixed_dict.get(self.negative, 0)
-        return self.from_positive_negative(positive, negative)
-
-    def positive_only(self, val):
-        (positive, negative) = self.value_to_tuple(val)
-        return positive
-
-    def negative_only(self, val):
-        (positive, negative) = self.value_to_tuple(val)
-        return negative
-
-
-#
-# Constants (1)
-#
-
-
-SUBSTANCE_DUO = Opposites('SUBSTANCE', 'ABSENCE')
-ABSENCE_DUO = SUBSTANCE_DUO
-ARDOR_DUO = Opposites('ARDOR', 'AEGIS')
-AEGIS_DUO = ARDOR_DUO
-SPEED_DUO = Opposites('SPEED', 'STALL')
-STALL_DIO = SPEED_DUO
-HEAL_DUO = Opposites('HEAL', 'WITHER')
-WITHER_DUO = HEAL_DUO
-QUINTESSENCE_DUO = Opposites('QUINTESSENCE', 'VOID')
-VOID_DUO = QUINTESSENCE_DUO
-FIRE_DUO = Opposites('FIRE', 'WATER')
-WATER_DUO = FIRE_DUO
-AIR_DUO = Opposites('AIR', 'EARTH')
-EARTH_DUO = AIR_DUO
-LIGHT_DUO = Opposites('LIGHT', 'SHADOW')
-SHADOW_DUO = LIGHT_DUO
-
-
-DUOS = [
-    SUBSTANCE_DUO,
-    ARDOR_DUO,
-    SPEED_DUO,
-    HEAL_DUO,
-    QUINTESSENCE_DUO,
-    AIR_DUO,
-    FIRE_DUO,
-    LIGHT_DUO,
-]
+        for (positive, negative) in OPPOSING_ELEMENTS
+    ]
+    return octonion.Octonion(*components)
 
 
 #
@@ -135,110 +70,97 @@ DUOS = [
 class ElementalOctonion(octonion.Octonion):
 
     def __init__(self, R=0, I=0, J=0, K=0, L=0, IL=0, JL=0, KL=0, **kwargs):  # noqa
-        input_dict = merge(
-            {
-                'SUBSTANCE': coefficient_type(R),
-                'ARDOR': coefficient_type(I),
-                'SPEED': coefficient_type(J),
-                'HEAL': coefficient_type(K),
-                'QUINTESSENCE': coefficient_type(L),
-                'FIRE': coefficient_type(IL),
-                'AIR': coefficient_type(JL),
-                'LIGHT': coefficient_type(KL),
-            },
-            kwargs,
+        input_octonion = octonion_to_elemental_dict(
+            octonion.Octonion(R, I, J, K, L, IL, JL, KL),
         )
-        self.substance = SUBSTANCE_DUO.from_labeled(input_dict)
-        self.ardor_aegis = ARDOR_DUO.from_labeled(input_dict)
-        self.speed_stall = SPEED_DUO.from_labeled(input_dict)
-        self.heal_wither = HEAL_DUO.from_labeled(input_dict)
-        self.quintessence = QUINTESSENCE_DUO.from_labeled(input_dict)
-        self.fire_water = FIRE_DUO.from_labeled(input_dict)
-        self.air_earth = AIR_DUO.from_labeled(input_dict)
-        self.light_shadow = LIGHT_DUO.from_labeled(input_dict)
-        self.stats = flatten(
-            [[duo.positive, duo.negative] for duo in DUOS]
+        self.elemental_dict = merge(
+            input_octonion,
+            keymap(lambda x: x.upper(), kwargs),
         )
-        super().__init__(
-            R=self.substance,
-            I=self.ardor_aegis,  # noqa
-            J=self.speed_stall,
-            K=self.heal_wither,
-            L=self.quintessence,
-            IL=self.fire_water,
-            JL=self.air_earth,
-            KL=self.light_shadow,
-        )
+        octo = elemental_dict_to_octonion(self.elemental_dict)
+        super().__init__(*octo.components)
+
+    def project(self, element):
+        return self.elemental_dict.get(element.upper(), 0)
 
     @property
     def SUBSTANCE(self):
-        return SUBSTANCE_DUO.positive_only(self.substance)
+        return self.project('SUBSTANCE')
 
     @property
     def ABSENCE(self):
-        return SUBSTANCE_DUO.negative_only(self.substance)
+        return self.project('ABSENCE')
 
     @property
     def ARDOR(self):
-        return ARDOR_DUO.positive_only(self.ardor_aegis)
+        return self.project('ARDOR')
 
     @property
     def AEGIS(self):
-        return ARDOR_DUO.negative_only(self.ardor_aegis)
+        return self.project('AEGIS')
 
     @property
     def SPEED(self):
-        return SPEED_DUO.positive_only(self.speed_stall)
+        return self.project('SPEED')
 
     @property
     def STALL(self):
-        return SPEED_DUO.negative_only(self.speed_stall)
+        return self.project('STALL')
 
     @property
     def HEAL(self):
-        return HEAL_DUO.positive_only(self.heal_wither)
+        return self.project('HEAL')
 
     @property
     def WITHER(self):
-        return HEAL_DUO.negative_only(self.heal_wither)
+        return self.project('WITHER')
 
     @property
     def QUINTESSENCE(self):
-        return QUINTESSENCE_DUO.positive_only(self.quintessence)
+        return self.project('QUINTESSENCE')
 
     @property
     def VOID(self):
-        return QUINTESSENCE_DUO.negative_only(self.quintessence)
+        return self.project('VOID')
 
     @property
     def AIR(self):
-        return AIR_DUO.positive_only(self.air_earth)
+        return self.project('AIR')
 
     @property
     def EARTH(self):
-        return AIR_DUO.negative_only(self.air_earth)
+        return self.project('EARTH')
 
     @property
     def FIRE(self):
-        return FIRE_DUO.positive_only(self.fire_water)
+        return self.project('FIRE')
 
     @property
     def WATER(self):
-        return FIRE_DUO.negative_only(self.fire_water)
+        return self.project('WATER')
 
     @property
     def LIGHT(self):
-        return LIGHT_DUO.positive_only(self.light_shadow)
+        return self.project('LIGHT')
 
     @property
     def SHADOW(self):
-        return LIGHT_DUO.negative_only(self.light_shadow)
+        return self.project('SHADOW')
 
-    def stat_dict(self):
-        return {k: getattr(self, k) for k in self.stats}
+    def __repr__(self):
+        component_strings = [
+            (
+                '{}'.format(element) if component == 1 else
+                '-{}'.format(element) if component == -1 else
+                '{} {}'.format(component, element)
+            )
+            for (element, component) in self.elemental_dict.items()
+            if component != 0
+        ]
+        return ' + '.join(component_strings)
 
     def __str__(self):
-        stats = self.stat_dict()
+        stats = self.elemental_dict()
         return json.dumps({k: str(v) for (k, v) in stats.items() if v})
 
 
