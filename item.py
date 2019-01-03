@@ -107,11 +107,15 @@ class Material(object):
         self.quality = quality
         self.mass = mass
         self.recipe = recipe
-        self.name = name
+        self._name = name
 
     @property
     def strength(self):
         return self.composition.norm()
+
+    @property
+    def name(self):
+        return self._name or 'unnamed'
 
     def walk_recipe(self):
         return walk_recipe(self)
@@ -119,7 +123,7 @@ class Material(object):
     def __repr__(self):
         return '<{0} ({1}) | {2} | m={3}, q={4}>'.format(
             type(self).__name__,
-            self.name or 'unnamed',
+            self.name,
             self.composition,
             self.mass,
             round(self.quality, 2),
