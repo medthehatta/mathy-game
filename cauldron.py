@@ -36,6 +36,10 @@ MAX_ASH_QUALITY = 30
 DEFAULT_CAULDRON_STRENGTH = 10
 
 
+# This is the default amount of mass that can be put into a cauldron
+DEFAULT_CAULDRON_CAPACITY = 10
+
+
 DEFAULT_MASTERIES = {
     elements.SUBSTANCE: 10,
     elements.ABSENCE: 1,
@@ -77,10 +81,12 @@ class Cauldron(object):
     def __init__(
         self,
         strength=DEFAULT_CAULDRON_STRENGTH,
+        capacity=DEFAULT_CAULDRON_CAPACITY,
         masteries=DEFAULT_MASTERIES,
         effect=elements.NOTHING,
     ):
         self.strength = strength
+        self.capacity = capacity
         self.masteries = masteries
         self.effect = effect
 
@@ -109,6 +115,12 @@ class Cauldron(object):
                 if deficit < 0
             )
             self.effect = mastery_deficit
+            return True
+        else:
+            return False
+
+    def _insufficient_capacity_for(self, mass):
+        if mass > self.capacity:
             return True
         else:
             return False
@@ -142,6 +154,11 @@ class Cauldron(object):
         if isinstance(additive, (item.Nothing, item.Ash)):
             raise TypeError('Cannot concoct with Nothing or Ash')
 
+        if self._insufficient_capacity_for(base.mass):
+            raise ValueError('Insufficient capacity for base material')
+        if self._insufficient_capacity_for(base.mass + additive.mass):
+            raise ValueError('Insufficient capacity for additive material')
+
         if self._insufficient_strength_for(additive.composition):
             return item.Nothing()
 
@@ -149,6 +166,7 @@ class Cauldron(object):
             return item.Nothing()
 
         result_composition = base.composition*additive.composition
+        result_mass = base.mass + additive.mass
 
         if self._insufficient_strength_for(result_composition):
             return item.Nothing()
@@ -171,7 +189,7 @@ class Cauldron(object):
         # If the thing we made has trash quality, it turns to ash and does not
         # contribute to our masteries.
         if quality < MAX_ASH_QUALITY:
-            return item.Ash(result_composition, quality)
+            return item.Ash(result_composition, quality, result_mass)
 
         # If we made it here, we had mastery over the ingredients and result,
         # so we actually (1) produce something of value, and (2) improve our
@@ -179,6 +197,7 @@ class Cauldron(object):
         result = base.__class__(
             result_composition,
             quality,
+            result_mass,
             recipe=[base, additive],
         )
         self._update_masteries(result_composition)

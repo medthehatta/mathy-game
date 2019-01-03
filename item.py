@@ -99,11 +99,13 @@ class Material(object):
         self,
         composition=elements.SUBSTANCE,
         quality=50,
+        mass=1,
         recipe=None,
         name=None,
     ):
         self.composition = composition
         self.quality = quality
+        self.mass = mass
         self.recipe = recipe
         self.name = name
 
@@ -115,11 +117,12 @@ class Material(object):
         return walk_recipe(self)
 
     def __repr__(self):
-        return '<{} ({}) | {} | q={}>'.format(
+        return '<{0} ({1}) | {2} | m={3}, q={4}>'.format(
             type(self).__name__,
             self.name or 'unnamed',
             self.composition,
-            self.quality,
+            self.mass,
+            round(self.quality, 2),
         )
 
     def __hash__(self):
