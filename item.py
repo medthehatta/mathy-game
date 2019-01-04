@@ -56,6 +56,14 @@ def random_concoction():
     return composition
 
 
+def walk_recipe(substance):
+    if substance.recipe is None:
+        return [substance]
+    else:
+        (base, additive) = substance.recipe
+        return [base] + walk_recipe(base) + [additive] + walk_recipe(additive)
+
+
 def random_item():
     invalid_item_types = [Nothing, Ash]
     valid_item_types = [
@@ -77,14 +85,6 @@ def random_items(n=20):
     for (i, item) in enumerate(result):
         print('{0:02}  {1}'.format(i, item))
     return result
-
-
-def walk_recipe(substance):
-    if substance.recipe is None:
-        return [substance]
-    else:
-        (base, additive) = substance.recipe
-        return [base] + walk_recipe(base) + [additive] + walk_recipe(additive)
 
 
 #
