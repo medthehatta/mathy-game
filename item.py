@@ -156,12 +156,13 @@ class Ash(Material):
 class Item(Material):
     """A material that can be used in some way (other than crafting)."""
 
-    def strength_augmented_by(self, element, coefficient=1):
-        scaled_element = coefficient*self.composition.get_component(element)
+    def element_activity(self, element):
         # int() is used to round down the component
         # If the component magnitude is less than 1, it is inert
-        element_rounded_down = int(scaled_element)
-        return (1 + element_rounded_down)*self.strength
+        return int(self.composition.get_component(element))
+
+    def strength_augmented_by(self, element):
+        return (1 + self.element_activity(element))*self.strength
 
 
 class Sword(Item):
