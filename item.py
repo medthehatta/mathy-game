@@ -156,17 +156,46 @@ class Ash(Material):
 class Item(Material):
     """A material that can be used in some way (other than crafting)."""
 
+    def strength_augmented_by(self, element, coefficient=1):
+        scaled_element = coefficient*self.composition.get_component(element)
+        # int() is used to round down the component
+        # If the component magnitude is less than 1, it is inert
+        element_rounded_down = int(scaled_element)
+        return (1 + element_rounded_down)*self.strength
+
 
 class Sword(Item):
     """An item which inflicts damage at close range."""
 
+    @property
+    def damage(self):
+        return self.strength_augmented_by('ardor')
+
+    @property
+    def range(self):
+        return 1
+
 
 class Bomb(Item):
-    """An item which inflicts damage at long range."""
+    """An item which inflicts damage at range."""
+
+    @property
+    def damage(self):
+        return self.strength_augmented_by('ardor')
+
+    @property
+    def range(self):
+        # int() is used to round down the component
+        # If the component magnitude is less than 1, it is inert
+        return 2 + int(self.composition.get_component('air'))
 
 
-class Shield(Item):
+class Armor(Item):
     """An item which inhibits damage."""
+
+    @property
+    def defense(self):
+        return self.strength_augmented_by('aegis')
 
 
 class Elixir(Item):
