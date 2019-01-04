@@ -23,6 +23,20 @@ my_inventory = inventory.Inventory()
 my_cauldron = cauldron.Cauldron()
 
 
+# TODO
+def list_inventory(inventory):
+    materials = sorted(
+        inventory.item_hashes.values(),
+        key=lambda m: (m.__class__, m.quality, m.mass, m.name),
+    )
+    widest_type = max(len(m.__class__.__name__) for m in materials)
+    # WIP...
+    for type_ in inventory.indices['type'].keys():
+        materials = inventory.reified(sorted(i.indices['type'].lookup(type_)))
+        for material in materials:
+            amount = inventory.item_counts[material]
+
+
 def bar(percent, pips=10):
     full = int(percent/100 * pips)
     bar = '|' + '='*(full - 1) + (']' if full else '') + '.'*(pips - full)
