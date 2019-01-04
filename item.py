@@ -165,24 +165,24 @@ class Item(Material):
         return (1 + self.element_activity(element))*self.strength
 
 
-class Sword(Item):
-    """An item which inflicts damage at close range."""
+class Weapon(Item):
+    """An item which inflicts damage."""
 
     @property
     def damage(self):
         return self.strength_augmented_by('ardor')
 
-    @property
     def range(self):
+        # Range '1' is melee distance
         return 1
 
 
-class Bomb(Item):
-    """An item which inflicts damage at range."""
+class Melee(Weapon):
+    """An item which inflicts damage at close range."""
 
-    @property
-    def damage(self):
-        return self.strength_augmented_by('ardor')
+
+class Ranged(Weapon):
+    """An item which inflicts damage at range."""
 
     @property
     def range(self):
