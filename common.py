@@ -19,5 +19,5 @@ def flatten(lst):
     return sum(lst, [])
 
 
-def average(*lst):
+def average(lst):
     return sum(lst) / len(lst)

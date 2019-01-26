@@ -11,6 +11,7 @@ from __future__ import (
 
 
 import math
+import random
 from functools import reduce
 
 
@@ -40,6 +41,31 @@ KL = 7
 def o(*args, **kwargs):
     """Create an octonion with the given components."""
     return Octonion(*args, **kwargs)
+
+
+def random_octonion():
+    """Create a random octonion."""
+    bases = [
+        oR,
+        oI,
+        oJ,
+        oK,
+        oL,
+        oIL,
+        oJL,
+        oKL,
+    ]
+    coefficients = [
+        -2, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3,
+        -0.5, -0.3, -0.3, -0.3, -0.2, -0.2, 0.2, 0.2, 0.2, 0.3, 0.3, 0.5, 0.5,
+    ]
+    composition_components = [random.choice(coefficients) for _ in range(3)]
+    composition_elements = [random.choice(bases) for _ in range(3)]
+    composition = sum(
+        (c*e for (c, e) in zip(composition_components, composition_elements)),
+        o(R=0),
+    )
+    return composition
 
 
 def printable(x):
@@ -157,7 +183,7 @@ def octoprod_from_left(*xs):
     """
     Perform multiple octonionic products in a row, from left-to-right.
 
-    The order matters (it is explicitly left-to-right) because octonion
+    The direction matters (it is explicitly left-to-right) because octonion
     multiplication is NOT associative.
     """
     if len(xs) == 0:
@@ -222,7 +248,7 @@ class Octonion(object):
         return math.sqrt(self.norm_squared())
 
     def inverse(self):
-        return self.conj()/self.norm()
+        return self.conj()/self.norm_squared()
 
     def __add__(self, other):
         if isinstance(other, Octonion):
@@ -274,6 +300,9 @@ class Octonion(object):
 
     def __eq__(self, other):
         return self.components == other.components
+
+    def __hash__(self):
+        return hash(tuple(self.components))
 
 
 #

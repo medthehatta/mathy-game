@@ -20,7 +20,7 @@ from common import average
 #
 
 
-# If your cauldron has mastery of an element at the MASTERY_COMPETENCE level,
+# If your focus has mastery of an element at the MASTERY_COMPETENCE level,
 # concoctions containing only that element will have a base quality of 50%.
 MASTERY_COMPETENCE = 10
 
@@ -30,14 +30,14 @@ MASTERY_COMPETENCE = 10
 MAX_ASH_QUALITY = 30
 
 
-# Cauldrons are not directly vulnerable to SUBSTANCE.  Instead, they get a
-# negative SUBSTANCE effect (rendering the cauldron unusable until fixed) if
-# the total STRENGTH of the concoction exceeds the cauldron strength.
-DEFAULT_CAULDRON_STRENGTH = 10
+# Focuses are not directly vulnerable to SUBSTANCE.  Instead, they get a
+# negative SUBSTANCE effect (rendering the focus unusable until fixed) if
+# the total STRENGTH of the concoction exceeds the focus strength.
+DEFAULT_FOCUS_STRENGTH = 10
 
 
-# This is the default amount of mass that can be put into a cauldron
-DEFAULT_CAULDRON_CAPACITY = 10
+# This is the default amount of mass that can be put into a focus
+DEFAULT_FOCUS_CAPACITY = 10
 
 
 DEFAULT_MASTERIES = {
@@ -76,12 +76,12 @@ def sigmoid_percent(x, fifty_pct=1):
 #
 
 
-class Cauldron(object):
+class Focus(object):
 
     def __init__(
         self,
-        strength=DEFAULT_CAULDRON_STRENGTH,
-        capacity=DEFAULT_CAULDRON_CAPACITY,
+        strength=DEFAULT_FOCUS_STRENGTH,
+        capacity=DEFAULT_FOCUS_CAPACITY,
         masteries=DEFAULT_MASTERIES,
         effect=elements.NOTHING,
     ):
@@ -103,7 +103,7 @@ class Cauldron(object):
                 self.masteries[element] - concoction.get_component(element)
             )
             for element in self.masteries
-            # Cauldrons are not vulnerable to SUBSTANCE by itself, but rather
+            # Focuses are not vulnerable to SUBSTANCE by itself, but rather
             # to the total strength of the concoction.  So we skip
             # SUBSTANCE-specific vulnerability.
             if element is not elements.SUBSTANCE

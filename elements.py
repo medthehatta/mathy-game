@@ -86,6 +86,10 @@ class ElementalOctonion(octonion.Octonion):
         # out the nonsensical crap from kwargs)
         self.elemental_dict = octonion_to_elemental_dict(octo)
 
+    @property
+    def strength(self):
+        return self.norm()
+
     def get_component(self, element):
         # If we passed in an EO, we're trying to project out the component
         # along one of the basis vectors.

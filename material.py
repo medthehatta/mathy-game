@@ -64,6 +64,34 @@ def walk_recipe(substance):
         return [base] + walk_recipe(base) + [additive] + walk_recipe(additive)
 
 
+def rational_extension(whole_numbers):
+    return (
+        whole_numbers +
+        [-x for x in whole_numbers] + 
+        [round(1/x, 2) for x in whole_numbers]
+    )
+
+
+def all_raw_compositions():
+    extra_elements = [
+        elements.ARDOR,
+        elements.SPEED,
+        elements.FLOURISH,
+        elements.QUINTESSENCE,
+        elements.FIRE,
+        elements.AIR,
+        elements.LIGHT,
+    ]
+    standard_coeffs = rational_extension([1, 2, 3])
+    sub_plus_element = [
+        (substance_coeff*elements.SUBSTANCE + other_coeff*other)
+        for substance_coeff in standard_coeffs
+        for other_coeff in standard_coeffs
+        for other in extra_elements
+    ]
+    return sub_plus_element
+
+
 #
 # Classes
 #
@@ -88,7 +116,7 @@ class Material(object):
 
     @property
     def strength(self):
-        return self.composition.norm()
+        return self.composition.strength
 
     @property
     def name(self):
